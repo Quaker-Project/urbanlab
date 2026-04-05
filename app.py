@@ -10,7 +10,7 @@ from openai import OpenAI
 st.set_page_config(page_title="UrbanLab Criminología", layout="centered")
 
 # 🔑 API KEY SEGURA
-api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("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")
 
 if not api_key:
     st.error("❌ Falta configurar OPENAI_API_KEY en Streamlit Secrets")
