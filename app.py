@@ -7,18 +7,18 @@ from io import BytesIO
 # -----------------------------
 # CONFIG
 # -----------------------------
-st.set_page_config(page_title="UrbanLab System", layout="wide")
+st.set_page_config(page_title="UrbanLab", layout="wide")
 
 st.markdown("""
 <div style="background-color:#1e3a8a;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">
-🏙️ URBAN POLICY SIMULATION SYSTEM
+🏙️ SISTEMA DE SIMULACIÓN DE POLÍTICA CRIMINAL
 </div>
 """, unsafe_allow_html=True)
 
-st.title("UrbanLab — Social Disorganization Simulator")
+st.title("UrbanLab — Teoría de la Desorganización Social")
 
 # -----------------------------
-# LISTA DE BARRIOS (GLOBAL)
+# LISTA DE BARRIOS
 # -----------------------------
 if "barrios_disponibles" not in st.session_state:
     st.session_state.barrios_disponibles = [
@@ -34,9 +34,9 @@ if "barrios_disponibles" not in st.session_state:
 # -----------------------------
 # IDENTIFICACIÓN DE GRUPO
 # -----------------------------
-st.header("👥 Group identification")
+st.header("👥 Identificación del grupo")
 
-grupo_input = st.text_input("Enter your group name")
+grupo_input = st.text_input("Introduce el nombre del grupo")
 
 if "grupo" not in st.session_state:
     st.session_state.grupo = None
@@ -54,40 +54,40 @@ if grupo_input and st.session_state.grupo is None:
         st.session_state.barrio = barrio
         st.session_state.barrios_disponibles.remove(barrio)
     else:
-        st.session_state.barrio = "No neighbourhoods left"
+        st.session_state.barrio = "No quedan barrios disponibles"
 
 # mostrar barrio
 if st.session_state.barrio:
 
-    st.header("📍 Assigned neighbourhood")
+    st.header("📍 Barrio asignado")
     st.success(st.session_state.barrio)
 
-    st.warning("⚠️ This neighbourhood is fixed and cannot be changed")
+    st.warning("⚠️ Este barrio es fijo y no puede modificarse")
 
 # -----------------------------
 # DIAGNÓSTICO
 # -----------------------------
 if st.session_state.barrio:
 
-    st.header("Step 1 — Criminological diagnosis")
+    st.header("Paso 1 — Diagnóstico criminológico")
 
     diagnostico = st.text_area("""
-    Analyse the neighbourhood:
+Analiza el barrio utilizando la teoría de la desorganización social:
 
-    - Social cohesion  
-    - Informal control  
-    - Structural conditions  
-    - Criminogenic dynamics  
-    """, height=200)
+- Cohesión social  
+- Control social informal  
+- Condiciones estructurales  
+- Factores criminógenos  
+""", height=200)
 
 # -----------------------------
 # PLAN
 # -----------------------------
 if st.session_state.barrio:
 
-    st.header("Step 2 — Intervention plan")
+    st.header("Paso 2 — Diseño de intervención")
 
-    plan = st.text_area("Design your intervention", height=200)
+    plan = st.text_area("Describe tu plan de intervención", height=200)
 
 # -----------------------------
 # INTERPRETADOR
@@ -142,14 +142,14 @@ def interpretar_plan(plan):
 # -----------------------------
 if st.session_state.barrio:
 
-    if st.button("Run simulation"):
+    if st.button("Ejecutar simulación"):
 
         if len(diagnostico) < 50:
-            st.warning("Diagnosis too short")
+            st.warning("El diagnóstico es demasiado breve")
             st.stop()
 
         if len(plan) < 50:
-            st.warning("Plan too short")
+            st.warning("El plan es demasiado breve")
             st.stop()
 
         cambios, contribuciones, tipo, score = interpretar_plan(plan)
@@ -183,122 +183,122 @@ if st.session_state.barrio:
 # -----------------------------
 if "resultado" in st.session_state:
 
-    st.header("Step 3 — Results")
+    st.header("Paso 3 — Resultados")
 
     c1,c2,c3 = st.columns(3)
-    c1.metric("Crime level", round(st.session_state.resultado,2))
-    c2.metric("Strategy", st.session_state.tipo)
-    c3.metric("Score", st.session_state.score)
+    c1.metric("Nivel de delincuencia", round(st.session_state.resultado,2))
+    c2.metric("Tipo de estrategia", st.session_state.tipo)
+    c3.metric("Puntuación teórica", st.session_state.score)
 
-    df = pd.DataFrame(st.session_state.contrib, columns=["Interventions"])
+    df = pd.DataFrame(st.session_state.contrib, columns=["Intervenciones detectadas"])
     st.dataframe(df)
 
-    st.subheader("🧠 Diagnostic feedback")
+    st.subheader("🧠 Feedback del diagnóstico")
 
     if "cohesion" not in diagnostico.lower():
-        st.warning("Missing cohesion analysis")
+        st.warning("Falta análisis de la cohesión social")
 
     if "control" not in diagnostico.lower():
-        st.warning("Missing informal control")
+        st.warning("Falta análisis del control informal")
 
     if "pobre" not in diagnostico.lower():
-        st.warning("Missing structural factors")
+        st.warning("Faltan factores estructurales")
 
 # -----------------------------
 # INFORME WORD
 # -----------------------------
 if "resultado" in st.session_state:
 
-    st.header("Step 4 — Generate report")
+    st.header("Paso 4 — Generar informe")
 
-    if st.button("Generate report"):
+    if st.button("Generar informe"):
 
         doc = Document()
 
-        doc.add_heading('URBAN POLICY REPORT', 1)
+        doc.add_heading('INFORME DE POLÍTICA CRIMINAL', 1)
 
-        doc.add_paragraph(f"Group: {st.session_state.grupo}")
-        doc.add_paragraph(f"Neighbourhood: {st.session_state.barrio}")
+        doc.add_paragraph(f"Grupo: {st.session_state.grupo}")
+        doc.add_paragraph(f"Barrio: {st.session_state.barrio}")
 
-        doc.add_heading('Diagnosis',2)
+        doc.add_heading('Diagnóstico',2)
         doc.add_paragraph(diagnostico)
 
-        doc.add_heading('Intervention',2)
+        doc.add_heading('Intervención',2)
         doc.add_paragraph(plan)
 
-        doc.add_heading('Results',2)
-        doc.add_paragraph(f"Crime level: {round(st.session_state.resultado,2)}")
-        doc.add_paragraph(f"Strategy: {st.session_state.tipo}")
+        doc.add_heading('Resultados',2)
+        doc.add_paragraph(f"Nivel de delincuencia: {round(st.session_state.resultado,2)}")
+        doc.add_paragraph(f"Tipo de estrategia: {st.session_state.tipo}")
 
         buffer = BytesIO()
         doc.save(buffer)
         buffer.seek(0)
 
         st.download_button(
-            "📄 Download report",
+            "📄 Descargar informe",
             buffer,
-            file_name="urban_report.docx"
+            file_name="informe_urbanlab.docx"
         )
 
 # -----------------------------
 # DRIVE + EVALUACIÓN
 # -----------------------------
 st.divider()
-st.header("📄 Report exchange & evaluation")
+st.header("📄 Intercambio y evaluación")
 
-grupo = st.selectbox("Group", ["Group A","Group B","Group C"])
+grupo = st.selectbox("Selecciona tu grupo", ["Grupo A","Grupo B","Grupo C"])
 
 links = {
-    "Group A":{"upload":"LINK_A","review":"LINK_B"},
-    "Group B":{"upload":"LINK_B","review":"LINK_C"},
-    "Group C":{"upload":"LINK_C","review":"LINK_A"}
+    "Grupo A":{"upload":"LINK_A","review":"LINK_B"},
+    "Grupo B":{"upload":"LINK_B","review":"LINK_C"},
+    "Grupo C":{"upload":"LINK_C","review":"LINK_A"}
 }
 
-st.subheader("Upload your report")
-st.markdown(f"[Open folder]({links[grupo]['upload']})")
+st.subheader("Subir informe")
+st.markdown(f"[Abrir carpeta]({links[grupo]['upload']})")
 
-st.subheader("Review reports")
-st.markdown(f"[Open reports]({links[grupo]['review']})")
+st.subheader("Evaluar informes")
+st.markdown(f"[Abrir informes]({links[grupo]['review']})")
 
 # -----------------------------
 # RÚBRICA
 # -----------------------------
-st.header("Peer evaluation")
+st.header("Evaluación entre grupos")
 
 c1,c2 = st.columns(2)
 
 with c1:
-    coherencia = st.slider("Theoretical coherence",0,10,5)
-    analisis = st.slider("Quality of diagnosis",0,10,5)
+    coherencia = st.slider("Coherencia teórica",0,10,5)
+    analisis = st.slider("Calidad del diagnóstico",0,10,5)
 
 with c2:
-    viabilidad = st.slider("Feasibility",0,10,5)
-    innovacion = st.slider("Innovation",0,10,5)
+    viabilidad = st.slider("Viabilidad",0,10,5)
+    innovacion = st.slider("Innovación",0,10,5)
 
 nota = (coherencia+analisis+viabilidad+innovacion)/4
-st.metric("Final grade", round(nota,2))
+st.metric("Nota final", round(nota,2))
 
-comentario = st.text_area("Comment")
+comentario = st.text_area("Comentario")
 
 # -----------------------------
 # EXPORTAR EVALUACIÓN
 # -----------------------------
-if st.button("Generate evaluation report"):
+if st.button("Generar informe de evaluación"):
 
     doc = Document()
 
-    doc.add_heading('PEER EVALUATION REPORT',1)
+    doc.add_heading('INFORME DE EVALUACIÓN',1)
 
-    doc.add_paragraph(f"Group: {grupo}")
-    doc.add_paragraph(f"Final grade: {round(nota,2)}")
+    doc.add_paragraph(f"Grupo: {grupo}")
+    doc.add_paragraph(f"Nota final: {round(nota,2)}")
 
-    doc.add_heading("Scores",2)
-    doc.add_paragraph(f"Coherence: {coherencia}")
-    doc.add_paragraph(f"Diagnosis: {analisis}")
-    doc.add_paragraph(f"Feasibility: {viabilidad}")
-    doc.add_paragraph(f"Innovation: {innovacion}")
+    doc.add_heading("Puntuaciones",2)
+    doc.add_paragraph(f"Coherencia: {coherencia}")
+    doc.add_paragraph(f"Diagnóstico: {analisis}")
+    doc.add_paragraph(f"Viabilidad: {viabilidad}")
+    doc.add_paragraph(f"Innovación: {innovacion}")
 
-    doc.add_heading("Comment",2)
+    doc.add_heading("Comentario",2)
     doc.add_paragraph(comentario)
 
     buffer = BytesIO()
@@ -306,7 +306,7 @@ if st.button("Generate evaluation report"):
     buffer.seek(0)
 
     st.download_button(
-        "📥 Download evaluation",
+        "📥 Descargar evaluación",
         buffer,
-        file_name="evaluation.docx"
+        file_name="evaluacion.docx"
     )
