@@ -1,13 +1,10 @@
 import streamlit as st
 import random
 import json
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-import tempfile
 
-st.set_page_config(page_title="UrbanLab PRO", layout="centered")
+st.set_page_config(page_title="UrbanLab", layout="centered")
 
-st.title("🏙️ UrbanLab PRO: Simulación de Política Criminal")
+st.title("🏙️ UrbanLab: Política Criminal")
 
 # -----------------------------
 # ESTADO
@@ -18,8 +15,8 @@ if "fase" not in st.session_state:
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
-if "informes" not in st.session_state:
-    st.session_state.informes = []
+if "ranking" not in st.session_state:
+    st.session_state.ranking = []
 
 # -----------------------------
 # INTERPRETADOR
@@ -28,7 +25,14 @@ def interpretar_plan(plan):
 
     texto = plan.lower()
 
-    cambios = {"policia":0,"cohesion":0,"control":0,"desorganizacion":0,"pobreza":0}
+    cambios = {
+        "policia": 0,
+        "cohesion": 0,
+        "control": 0,
+        "desorganizacion": 0,
+        "pobreza": 0
+    }
+
     score = 0
     feedback = []
 
@@ -44,10 +48,10 @@ def interpretar_plan(plan):
         score += 3
         feedback.append("✔ Cohesión social")
 
-    if "urban" in texto:
+    if "urban" in texto or "espacio" in texto:
         cambios["desorganizacion"] -= 10
         score += 3
-        feedback.append("✔ Mejora urbana")
+        feedback.append("✔ Intervención urbana")
 
     if "empleo" in texto or "educa" in texto:
         cambios["pobreza"] -= 10
@@ -73,30 +77,52 @@ def calcular_nota(delincuencia, score):
     return min(10, nota)
 
 # -----------------------------
-# PDF
-# -----------------------------
-def generar_pdf(texto):
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-    doc = SimpleDocTemplate(tmp.name)
-    styles = getSampleStyleSheet()
-    content = [Paragraph(texto, styles["Normal"])]
-    doc.build(content)
-    return tmp.name
-
-# -----------------------------
-# BARRIOS
+# BARRIOS (COMPLETOS)
 # -----------------------------
 barrios = {
-    "Exclusión severa": {"desorganizacion":85,"cohesion":25,"pobreza":90},
-    "Centro degradado": {"desorganizacion":70,"cohesion":35,"pobreza":65},
-    "Barrio en cambio": {"desorganizacion":60,"cohesion":40,"pobreza":60}
+
+    "Exclusión severa (tipo 3000 viviendas)": {
+        "desorganizacion": 85, "cohesion": 25, "pobreza": 90,
+        "desc": "Alta marginalidad, economías informales y ausencia de control institucional."
+    },
+
+    "Centro urbano degradado (tipo Raval)": {
+        "desorganizacion": 70, "cohesion": 35, "pobreza": 65,
+        "desc": "Alta densidad, población flotante y conflictos de convivencia."
+    },
+
+    "Barrio en transformación (tipo Cabanyal)": {
+        "desorganizacion": 60, "cohesion": 40, "pobreza": 60,
+        "desc": "Cambio urbano con tensiones sociales y desplazamiento."
+    },
+
+    "Periferia obrera (tipo Vallecas)": {
+        "desorganizacion": 55, "cohesion": 50, "pobreza": 55,
+        "desc": "Barrio con identidad comunitaria pero desigualdad creciente."
+    },
+
+    "Barrio multicultural (tipo Usera)": {
+        "desorganizacion": 65, "cohesion": 45, "pobreza": 60,
+        "desc": "Diversidad cultural con posibles conflictos de integración."
+    },
+
+    "Barrio aislado (tipo Ciutat Meridiana)": {
+        "desorganizacion": 75, "cohesion": 35, "pobreza": 75,
+        "desc": "Aislamiento territorial y falta de oportunidades."
+    },
+
+    "Polígono marginal (tipo La Mina)": {
+        "desorganizacion": 80, "cohesion": 30, "pobreza": 85,
+        "desc": "Alta criminalidad estructural y desconfianza institucional."
+    }
 }
 
 # -----------------------------
 # INICIO
 # -----------------------------
 if st.session_state.fase == "inicio":
-    st.markdown("### Diseña una política criminal basada en la teoría")
+
+    st.markdown("### Diseña una política criminal eficaz")
 
     if st.button("Comenzar"):
         st.session_state.fase = "barrio"
@@ -108,23 +134,27 @@ if st.session_state.fase == "barrio":
 
     barrio = st.selectbox("Selecciona barrio", list(barrios.keys()))
 
+    st.write(barrios[barrio]["desc"])
+
     if st.button("Confirmar"):
+
         base = barrios[barrio]
 
         st.session_state.barrio = {
             "nombre": barrio,
             "desorganizacion": base["desorganizacion"],
             "cohesion": base["cohesion"],
-            "control":30,
+            "control": 30,
             "pobreza": base["pobreza"],
-            "delincuencia":60
+            "policia": 40,
+            "delincuencia": 60
         }
 
         st.session_state.ronda = 1
         st.session_state.fase = "juego"
 
 # -----------------------------
-# JUEGO (3 RONDAS)
+# JUEGO
 # -----------------------------
 if st.session_state.fase == "juego":
 
@@ -138,13 +168,15 @@ if st.session_state.fase == "juego":
     if st.button("Ejecutar"):
 
         if len(plan) < 20:
-            st.warning("Escribe un plan más desarrollado")
+            st.warning("Describe mejor tu intervención")
             st.stop()
 
         cambios, feedback, score = interpretar_plan(plan)
 
+        # 🔥 SOLUCIÓN KEYERROR
         for k in cambios:
-            b[k] += cambios[k]
+            if k in b:
+                b[k] += cambios[k]
 
         # evento
         evento = random.choice(["crisis", "conflicto", "ninguno"])
@@ -155,11 +187,12 @@ if st.session_state.fase == "juego":
         if evento == "conflicto":
             b["cohesion"] -= 10
 
+        # cálculo delito
         b["delincuencia"] = (
-            b["desorganizacion"]*0.4 +
-            b["pobreza"]*0.3 -
-            b["cohesion"]*0.3 -
-            b["control"]*0.2
+            b["desorganizacion"] * 0.4 +
+            b["pobreza"] * 0.3 -
+            b["cohesion"] * 0.3 -
+            b["control"] * 0.2
         )
 
         st.write("Feedback:", feedback)
@@ -188,28 +221,25 @@ if st.session_state.fase == "final":
     st.title("Resultado final")
     st.metric("Nota", nota)
 
-    informe = f"""
-    Barrio: {b['nombre']}
-    Delincuencia final: {round(b['delincuencia'],2)}
-    Nota: {nota}
-    """
+    informe = json.dumps({
+        "barrio": b,
+        "historial": st.session_state.historial,
+        "nota": nota
+    }, indent=2)
 
-    pdf = generar_pdf(informe)
-
-    with open(pdf, "rb") as f:
-        st.download_button("📄 Descargar PDF", f, file_name="informe.pdf")
+    st.download_button("📄 Descargar informe", informe, file_name="informe.json")
 
     nombre = st.text_input("Nombre del grupo")
 
-    if st.button("Subir informe"):
-        st.session_state.informes.append({
+    if st.button("Añadir al ranking"):
+        st.session_state.ranking.append({
             "grupo": nombre,
             "nota": nota
         })
 
     st.subheader("🏆 Ranking")
 
-    ranking = sorted(st.session_state.informes, key=lambda x: x["nota"], reverse=True)
+    ranking = sorted(st.session_state.ranking, key=lambda x: x["nota"], reverse=True)
 
     for r in ranking:
-        st.write(f"{r['grupo']} - Nota: {r['nota']}")
+        st.write(f"{r['grupo']} - {r['nota']}")
