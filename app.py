@@ -1,22 +1,93 @@
 import streamlit as st
+import pandas as pd
 import random
-import json
-
-st.set_page_config(page_title="UrbanLab", layout="centered")
-
-st.title("🏙️ UrbanLab: Política Criminal")
+from docx import Document
+from io import BytesIO
 
 # -----------------------------
-# ESTADO
+# CONFIG
 # -----------------------------
-if "fase" not in st.session_state:
-    st.session_state.fase = "inicio"
+st.set_page_config(page_title="UrbanLab System", layout="wide")
 
-if "historial" not in st.session_state:
-    st.session_state.historial = []
+st.markdown("""
+<div style="background-color:#1e3a8a;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">
+🏙️ URBAN POLICY SIMULATION SYSTEM
+</div>
+""", unsafe_allow_html=True)
 
-if "ranking" not in st.session_state:
-    st.session_state.ranking = []
+st.title("UrbanLab — Social Disorganization Simulator")
+
+# -----------------------------
+# LISTA DE BARRIOS (GLOBAL)
+# -----------------------------
+if "barrios_disponibles" not in st.session_state:
+    st.session_state.barrios_disponibles = [
+        "Polígono Sur (Sevilla)",
+        "El Raval (Barcelona)",
+        "El Cabanyal (Valencia)",
+        "Puente de Vallecas (Madrid)",
+        "Usera (Madrid)",
+        "Ciutat Meridiana (Barcelona)",
+        "La Mina (Sant Adrià del Besòs)"
+    ]
+
+# -----------------------------
+# IDENTIFICACIÓN DE GRUPO
+# -----------------------------
+st.header("👥 Group identification")
+
+grupo_input = st.text_input("Enter your group name")
+
+if "grupo" not in st.session_state:
+    st.session_state.grupo = None
+
+if "barrio" not in st.session_state:
+    st.session_state.barrio = None
+
+# asignación única
+if grupo_input and st.session_state.grupo is None:
+
+    st.session_state.grupo = grupo_input
+
+    if len(st.session_state.barrios_disponibles) > 0:
+        barrio = random.choice(st.session_state.barrios_disponibles)
+        st.session_state.barrio = barrio
+        st.session_state.barrios_disponibles.remove(barrio)
+    else:
+        st.session_state.barrio = "No neighbourhoods left"
+
+# mostrar barrio
+if st.session_state.barrio:
+
+    st.header("📍 Assigned neighbourhood")
+    st.success(st.session_state.barrio)
+
+    st.warning("⚠️ This neighbourhood is fixed and cannot be changed")
+
+# -----------------------------
+# DIAGNÓSTICO
+# -----------------------------
+if st.session_state.barrio:
+
+    st.header("Step 1 — Criminological diagnosis")
+
+    diagnostico = st.text_area("""
+    Analyse the neighbourhood:
+
+    - Social cohesion  
+    - Informal control  
+    - Structural conditions  
+    - Criminogenic dynamics  
+    """, height=200)
+
+# -----------------------------
+# PLAN
+# -----------------------------
+if st.session_state.barrio:
+
+    st.header("Step 2 — Intervention plan")
+
+    plan = st.text_area("Design your intervention", height=200)
 
 # -----------------------------
 # INTERPRETADOR
@@ -25,221 +96,217 @@ def interpretar_plan(plan):
 
     texto = plan.lower()
 
-    cambios = {
-        "policia": 0,
-        "cohesion": 0,
-        "control": 0,
-        "desorganizacion": 0,
-        "pobreza": 0
+    categorias = {
+        "Control formal": {
+            "kw":["polic","vigilancia","cámaras"],
+            "impacto":{"policia":15,"control":10},
+            "tipo":"punitiva"
+        },
+        "Cohesión social": {
+            "kw":["vecin","comunit","asociaciones"],
+            "impacto":{"cohesion":15,"control":10},
+            "tipo":"estructural"
+        },
+        "Urbanismo": {
+            "kw":["urban","espacio","rehabilitación"],
+            "impacto":{"desorganizacion":-15},
+            "tipo":"estructural"
+        },
+        "Intervención económica": {
+            "kw":["empleo","educa","formación"],
+            "impacto":{"pobreza":-15},
+            "tipo":"estructural"
+        }
     }
 
-    score = 0
-    feedback = []
+    cambios = {"policia":0,"cohesion":0,"control":0,"desorganizacion":0,"pobreza":0}
+    contribuciones = []
+    tipos = set()
 
-    if "polic" in texto:
-        cambios["policia"] += 10
-        cambios["control"] += 5
-        score += 1
-        feedback.append("Uso de control formal")
+    for nombre,data in categorias.items():
+        for kw in data["kw"]:
+            if kw in texto:
+                tipos.add(data["tipo"])
+                for k,v in data["impacto"].items():
+                    cambios[k]+=v
+                contribuciones.append(nombre)
+                break
 
-    if "comunit" in texto or "vecin" in texto:
-        cambios["cohesion"] += 10
-        cambios["control"] += 8
-        score += 3
-        feedback.append("✔ Cohesión social")
+    tipo_final = "mixta" if len(tipos)>1 else list(tipos)[0] if tipos else "indefinida"
+    score = len(contribuciones)*2
 
-    if "urban" in texto or "espacio" in texto:
-        cambios["desorganizacion"] -= 10
-        score += 3
-        feedback.append("✔ Intervención urbana")
+    return cambios, contribuciones, tipo_final, min(score,10)
 
-    if "empleo" in texto or "educa" in texto:
-        cambios["pobreza"] -= 10
-        score += 3
-        feedback.append("✔ Intervención estructural")
+# -----------------------------
+# EJECUCIÓN
+# -----------------------------
+if st.session_state.barrio:
 
-    return cambios, feedback, min(score,10)
+    if st.button("Run simulation"):
+
+        if len(diagnostico) < 50:
+            st.warning("Diagnosis too short")
+            st.stop()
+
+        if len(plan) < 50:
+            st.warning("Plan too short")
+            st.stop()
+
+        cambios, contribuciones, tipo, score = interpretar_plan(plan)
+
+        base = {
+            "desorganizacion":70,
+            "cohesion":40,
+            "control":30,
+            "pobreza":60,
+            "policia":40
+        }
+
+        for k in cambios:
+            if k in base:
+                base[k]+=cambios[k]
+
+        delito = (
+            base["desorganizacion"]*0.4 +
+            base["pobreza"]*0.3 -
+            base["cohesion"]*0.3 -
+            base["control"]*0.2
+        )
+
+        st.session_state.resultado = delito
+        st.session_state.contrib = contribuciones
+        st.session_state.tipo = tipo
+        st.session_state.score = score
+
+# -----------------------------
+# RESULTADOS
+# -----------------------------
+if "resultado" in st.session_state:
+
+    st.header("Step 3 — Results")
+
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Crime level", round(st.session_state.resultado,2))
+    c2.metric("Strategy", st.session_state.tipo)
+    c3.metric("Score", st.session_state.score)
+
+    df = pd.DataFrame(st.session_state.contrib, columns=["Interventions"])
+    st.dataframe(df)
+
+    st.subheader("🧠 Diagnostic feedback")
+
+    if "cohesion" not in diagnostico.lower():
+        st.warning("Missing cohesion analysis")
+
+    if "control" not in diagnostico.lower():
+        st.warning("Missing informal control")
+
+    if "pobre" not in diagnostico.lower():
+        st.warning("Missing structural factors")
+
+# -----------------------------
+# INFORME WORD
+# -----------------------------
+if "resultado" in st.session_state:
+
+    st.header("Step 4 — Generate report")
+
+    if st.button("Generate report"):
+
+        doc = Document()
+
+        doc.add_heading('URBAN POLICY REPORT', 1)
+
+        doc.add_paragraph(f"Group: {st.session_state.grupo}")
+        doc.add_paragraph(f"Neighbourhood: {st.session_state.barrio}")
+
+        doc.add_heading('Diagnosis',2)
+        doc.add_paragraph(diagnostico)
+
+        doc.add_heading('Intervention',2)
+        doc.add_paragraph(plan)
+
+        doc.add_heading('Results',2)
+        doc.add_paragraph(f"Crime level: {round(st.session_state.resultado,2)}")
+        doc.add_paragraph(f"Strategy: {st.session_state.tipo}")
+
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        st.download_button(
+            "📄 Download report",
+            buffer,
+            file_name="urban_report.docx"
+        )
+
+# -----------------------------
+# DRIVE + EVALUACIÓN
+# -----------------------------
+st.divider()
+st.header("📄 Report exchange & evaluation")
+
+grupo = st.selectbox("Group", ["Group A","Group B","Group C"])
+
+links = {
+    "Group A":{"upload":"LINK_A","review":"LINK_B"},
+    "Group B":{"upload":"LINK_B","review":"LINK_C"},
+    "Group C":{"upload":"LINK_C","review":"LINK_A"}
+}
+
+st.subheader("Upload your report")
+st.markdown(f"[Open folder]({links[grupo]['upload']})")
+
+st.subheader("Review reports")
+st.markdown(f"[Open reports]({links[grupo]['review']})")
 
 # -----------------------------
 # RÚBRICA
 # -----------------------------
-def calcular_nota(delincuencia, score):
+st.header("Peer evaluation")
 
-    nota = 0
+c1,c2 = st.columns(2)
 
-    if delincuencia < 30:
-        nota += 5
-    elif delincuencia < 50:
-        nota += 3
+with c1:
+    coherencia = st.slider("Theoretical coherence",0,10,5)
+    analisis = st.slider("Quality of diagnosis",0,10,5)
 
-    nota += score
+with c2:
+    viabilidad = st.slider("Feasibility",0,10,5)
+    innovacion = st.slider("Innovation",0,10,5)
 
-    return min(10, nota)
+nota = (coherencia+analisis+viabilidad+innovacion)/4
+st.metric("Final grade", round(nota,2))
 
-# -----------------------------
-# BARRIOS (COMPLETOS)
-# -----------------------------
-barrios = {
-
-    "Exclusión severa (tipo 3000 viviendas)": {
-        "desorganizacion": 85, "cohesion": 25, "pobreza": 90,
-        "desc": "Alta marginalidad, economías informales y ausencia de control institucional."
-    },
-
-    "Centro urbano degradado (tipo Raval)": {
-        "desorganizacion": 70, "cohesion": 35, "pobreza": 65,
-        "desc": "Alta densidad, población flotante y conflictos de convivencia."
-    },
-
-    "Barrio en transformación (tipo Cabanyal)": {
-        "desorganizacion": 60, "cohesion": 40, "pobreza": 60,
-        "desc": "Cambio urbano con tensiones sociales y desplazamiento."
-    },
-
-    "Periferia obrera (tipo Vallecas)": {
-        "desorganizacion": 55, "cohesion": 50, "pobreza": 55,
-        "desc": "Barrio con identidad comunitaria pero desigualdad creciente."
-    },
-
-    "Barrio multicultural (tipo Usera)": {
-        "desorganizacion": 65, "cohesion": 45, "pobreza": 60,
-        "desc": "Diversidad cultural con posibles conflictos de integración."
-    },
-
-    "Barrio aislado (tipo Ciutat Meridiana)": {
-        "desorganizacion": 75, "cohesion": 35, "pobreza": 75,
-        "desc": "Aislamiento territorial y falta de oportunidades."
-    },
-
-    "Polígono marginal (tipo La Mina)": {
-        "desorganizacion": 80, "cohesion": 30, "pobreza": 85,
-        "desc": "Alta criminalidad estructural y desconfianza institucional."
-    }
-}
+comentario = st.text_area("Comment")
 
 # -----------------------------
-# INICIO
+# EXPORTAR EVALUACIÓN
 # -----------------------------
-if st.session_state.fase == "inicio":
+if st.button("Generate evaluation report"):
 
-    st.markdown("### Diseña una política criminal eficaz")
+    doc = Document()
 
-    if st.button("Comenzar"):
-        st.session_state.fase = "barrio"
+    doc.add_heading('PEER EVALUATION REPORT',1)
 
-# -----------------------------
-# BARRIO
-# -----------------------------
-if st.session_state.fase == "barrio":
+    doc.add_paragraph(f"Group: {grupo}")
+    doc.add_paragraph(f"Final grade: {round(nota,2)}")
 
-    barrio = st.selectbox("Selecciona barrio", list(barrios.keys()))
+    doc.add_heading("Scores",2)
+    doc.add_paragraph(f"Coherence: {coherencia}")
+    doc.add_paragraph(f"Diagnosis: {analisis}")
+    doc.add_paragraph(f"Feasibility: {viabilidad}")
+    doc.add_paragraph(f"Innovation: {innovacion}")
 
-    st.write(barrios[barrio]["desc"])
+    doc.add_heading("Comment",2)
+    doc.add_paragraph(comentario)
 
-    if st.button("Confirmar"):
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
 
-        base = barrios[barrio]
-
-        st.session_state.barrio = {
-            "nombre": barrio,
-            "desorganizacion": base["desorganizacion"],
-            "cohesion": base["cohesion"],
-            "control": 30,
-            "pobreza": base["pobreza"],
-            "policia": 40,
-            "delincuencia": 60
-        }
-
-        st.session_state.ronda = 1
-        st.session_state.fase = "juego"
-
-# -----------------------------
-# JUEGO
-# -----------------------------
-if st.session_state.fase == "juego":
-
-    b = st.session_state.barrio
-
-    st.subheader(f"Ronda {st.session_state.ronda}/3")
-    st.write(b)
-
-    plan = st.text_area("Plan de intervención")
-
-    if st.button("Ejecutar"):
-
-        if len(plan) < 20:
-            st.warning("Describe mejor tu intervención")
-            st.stop()
-
-        cambios, feedback, score = interpretar_plan(plan)
-
-        # 🔥 SOLUCIÓN KEYERROR
-        for k in cambios:
-            if k in b:
-                b[k] += cambios[k]
-
-        # evento
-        evento = random.choice(["crisis", "conflicto", "ninguno"])
-
-        if evento == "crisis":
-            b["pobreza"] += 10
-
-        if evento == "conflicto":
-            b["cohesion"] -= 10
-
-        # cálculo delito
-        b["delincuencia"] = (
-            b["desorganizacion"] * 0.4 +
-            b["pobreza"] * 0.3 -
-            b["cohesion"] * 0.3 -
-            b["control"] * 0.2
-        )
-
-        st.write("Feedback:", feedback)
-        st.metric("Score teórico", score)
-
-        st.session_state.historial.append({
-            "resultado": b["delincuencia"],
-            "score": score
-        })
-
-        st.session_state.ronda += 1
-
-        if st.session_state.ronda > 3:
-            st.session_state.fase = "final"
-
-# -----------------------------
-# FINAL
-# -----------------------------
-if st.session_state.fase == "final":
-
-    b = st.session_state.barrio
-    score = st.session_state.historial[-1]["score"]
-
-    nota = calcular_nota(b["delincuencia"], score)
-
-    st.title("Resultado final")
-    st.metric("Nota", nota)
-
-    informe = json.dumps({
-        "barrio": b,
-        "historial": st.session_state.historial,
-        "nota": nota
-    }, indent=2)
-
-    st.download_button("📄 Descargar informe", informe, file_name="informe.json")
-
-    nombre = st.text_input("Nombre del grupo")
-
-    if st.button("Añadir al ranking"):
-        st.session_state.ranking.append({
-            "grupo": nombre,
-            "nota": nota
-        })
-
-    st.subheader("🏆 Ranking")
-
-    ranking = sorted(st.session_state.ranking, key=lambda x: x["nota"], reverse=True)
-
-    for r in ranking:
-        st.write(f"{r['grupo']} - {r['nota']}")
+    st.download_button(
+        "📥 Download evaluation",
+        buffer,
+        file_name="evaluation.docx"
+    )
