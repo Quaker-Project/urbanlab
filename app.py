@@ -4,7 +4,7 @@ import json
 from openai import OpenAI
 
 # 🔑 API (pon tu clave en Streamlit secrets)
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+client = OpenAI(api_key=st.secrets["1234"])
 
 st.set_page_config(page_title="UrbanLab Criminología", layout="centered")
 
