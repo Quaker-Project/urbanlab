@@ -28,7 +28,8 @@ if "barrios_disponibles" not in st.session_state:
         "Puente de Vallecas (Madrid)",
         "Usera (Madrid)",
         "Ciutat Meridiana (Barcelona)",
-        "La Mina (Sant Adrià del Besòs)"
+        "La Mina (Sant Adrià del Besòs)",
+        "Palma Palmilla (Málaga)
     ]
 
 # -----------------------------
@@ -72,12 +73,13 @@ if st.session_state.barrio:
     st.header("Paso 1 — Diagnóstico criminológico")
 
     diagnostico = st.text_area("""
-Analiza el barrio utilizando la teoría de la desorganización social:
+Analiza el barrio utilizando la teoría de la desorganización social. Buscar a través de distintas fuentes (Prensa, INE, Ayuntamiento, etc.) toda la información posible del barrio. Ejemplo de aspectos a valorar:
 
 - Cohesión social  
 - Control social informal  
 - Condiciones estructurales  
-- Factores criminógenos  
+- Uso y conservación del espacio público
+- Disponibilidad de recursos e infraestructura pública
 """, height=200)
 
 # -----------------------------
