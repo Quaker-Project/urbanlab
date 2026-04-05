@@ -1,26 +1,13 @@
 import streamlit as st
 import random
 import json
-import os
-from openai import OpenAI
 
-# -----------------------------
-# CONFIG
-# -----------------------------
 st.set_page_config(page_title="UrbanLab Criminología", layout="centered")
-
-api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-
-if not api_key:
-    st.error("Falta configurar OPENAI_API_KEY")
-    st.stop()
-
-client = OpenAI(api_key=api_key)
 
 st.title("🏙️ UrbanLab: Simulación de Política Criminal")
 
 # -----------------------------
-# ESTADO
+# ESTADO GLOBAL
 # -----------------------------
 if "fase" not in st.session_state:
     st.session_state.fase = "inicio"
@@ -28,162 +15,75 @@ if "fase" not in st.session_state:
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
-if "otros_barrios" not in st.session_state:
-    st.session_state.otros_barrios = {
-        "Zona colindante": {"delincuencia": 60}
+if "informes_subidos" not in st.session_state:
+    st.session_state.informes_subidos = []
+
+# -----------------------------
+# INTERPRETADOR (SIN IA)
+# -----------------------------
+def interpretar_plan(plan):
+
+    texto = plan.lower()
+
+    cambios = {
+        "policia": 0,
+        "cohesion": 0,
+        "control": 0,
+        "desorganizacion": 0,
+        "pobreza": 0
     }
 
+    evaluacion = []
+    puntuacion = 0
+
+    if "polic" in texto:
+        cambios["policia"] += 10
+        cambios["control"] += 5
+        evaluacion.append("Uso de control formal (efecto limitado)")
+        puntuacion += 1
+
+    if "comunit" in texto or "vecin" in texto:
+        cambios["cohesion"] += 10
+        cambios["control"] += 8
+        evaluacion.append("✔ Refuerza cohesión social")
+        puntuacion += 3
+
+    if "urban" in texto or "espacio" in texto:
+        cambios["desorganizacion"] -= 10
+        evaluacion.append("✔ Mejora entorno urbano")
+        puntuacion += 3
+
+    if "empleo" in texto or "educa" in texto:
+        cambios["pobreza"] -= 10
+        evaluacion.append("✔ Actúa sobre causas estructurales")
+        puntuacion += 3
+
+    if "mediacion" in texto:
+        cambios["cohesion"] += 8
+        evaluacion.append("✔ Mejora relaciones sociales")
+        puntuacion += 2
+
+    if cambios["policia"] > 0 and puntuacion <= 1:
+        evaluacion.append("⚠️ Estrategia excesivamente punitiva")
+        puntuacion -= 2
+
+    return cambios, evaluacion, max(0, min(10, puntuacion))
+
 # -----------------------------
-# IA
-# -----------------------------
-def interpretar_plan_ia(plan):
-    prompt = f"""
-    Eres experto en criminología urbana (teoría de la desorganización social).
-
-    Analiza este plan:
-    "{plan}"
-
-    Devuelve SOLO JSON con:
-    policia (-10 a 10)
-    cohesion (-10 a 10)
-    control_informal (-10 a 10)
-    desorganizacion (-10 a 10)
-    pobreza (-10 a 10)
-    tipo_estrategia (punitiva, estructural, mixta)
-    coherencia_teorica (0-10)
-    evaluacion (feedback en español)
-    """
-
-    r = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    try:
-        return json.loads(r.choices[0].message.content)
-    except:
-        return None
-
-# -----------------------------
-# BARRIOS REALISTAS
+# BARRIOS
 # -----------------------------
 barrios = {
-
     "Periferia de exclusión severa": {
         "datos": {"desorganizacion": 85, "cohesion": 25, "pobreza": 90},
-        "descripcion": """
-        🏙️ Gran conjunto de vivienda social construido en la periferia, con fuerte concentración de exclusión.
-
-        👥 Población:
-        - Alta tasa de desempleo estructural
-        - Economías informales
-        - Familias con múltiples vulnerabilidades
-
-        🏚️ Entorno:
-        - Edificios deteriorados
-        - Espacios públicos degradados
-        - Escasa presencia institucional efectiva
-
-        ⚠️ Problemas:
-        - Alta criminalidad visible
-        - Mercados ilegales consolidados
-        - Desconfianza hacia instituciones
-
-        🗣️ Testimonios:
-        “Aquí la policía entra pero no cambia nada”
-        “Los chavales crecen viendo lo mismo”
-        """
+        "descripcion": "Zona con alta marginalidad, economías informales y débil control social."
     },
-
     "Centro urbano degradado": {
         "datos": {"desorganizacion": 70, "cohesion": 35, "pobreza": 65},
-        "descripcion": """
-        🏙️ Barrio céntrico con alta densidad, mezcla social y fuerte presión urbana.
-
-        👥 Población:
-        - Diversidad cultural
-        - Población flotante
-        - Turismo y economía informal
-
-        🏚️ Entorno:
-        - Vivienda antigua
-        - Alta rotación residencial
-
-        ⚠️ Problemas:
-        - Delincuencia oportunista
-        - Conflictos de convivencia
-        - Saturación del espacio público
-
-        🗣️ Testimonios:
-        “Esto ya no es un barrio, es un lugar de paso”
-        """
+        "descripcion": "Barrio céntrico con alta rotación y conflictos de convivencia."
     },
-
-    "Barrio en transformación urbana": {
+    "Barrio en transformación": {
         "datos": {"desorganizacion": 60, "cohesion": 40, "pobreza": 60},
-        "descripcion": """
-        🏙️ Barrio histórico en proceso de renovación urbana.
-
-        👥 Población:
-        - Vecinos tradicionales + nuevos residentes
-        - Tensiones por gentrificación
-
-        🏚️ Entorno:
-        - Mejora de infraestructuras
-        - Cambios en usos del espacio
-
-        ⚠️ Problemas:
-        - Conflictos sociales
-        - Desplazamiento poblacional
-
-        🗣️ Testimonios:
-        “El barrio está cambiando demasiado rápido”
-        """
-    },
-
-    "Periferia obrera consolidada": {
-        "datos": {"desorganizacion": 55, "cohesion": 50, "pobreza": 55},
-        "descripcion": """
-        🏙️ Barrio de tradición obrera con identidad comunitaria.
-
-        👥 Población:
-        - Redes vecinales fuertes
-        - Historia de organización social
-
-        🏚️ Entorno:
-        - Equipamientos básicos
-        - Espacios públicos activos
-
-        ⚠️ Problemas:
-        - Delincuencia juvenil
-        - Desigualdad creciente
-
-        🗣️ Testimonios:
-        “Aquí nos conocemos todos, pero las cosas están cambiando”
-        """
-    },
-
-    "Barrio aislado geográficamente": {
-        "datos": {"desorganizacion": 75, "cohesion": 35, "pobreza": 75},
-        "descripcion": """
-        🏙️ Barrio periférico con aislamiento físico y malas conexiones.
-
-        👥 Población:
-        - Alta vulnerabilidad social
-        - Limitada movilidad
-
-        🏚️ Entorno:
-        - Barreras geográficas
-        - Transporte deficiente
-
-        ⚠️ Problemas:
-        - Exclusión territorial
-        - Falta de oportunidades
-
-        🗣️ Testimonios:
-        “Estamos fuera de todo”
-        """
+        "descripcion": "Barrio en cambio con tensiones sociales y urbanas."
     }
 }
 
@@ -191,27 +91,19 @@ barrios = {
 # INICIO
 # -----------------------------
 if st.session_state.fase == "inicio":
-    st.markdown("""
-    ## 🎯 Misión
-
-    Diseñar una política criminal basada en la teoría de la desorganización social.
-
-    👉 Reduce la delincuencia sin romper la cohesión social
-    """)
-
+    st.markdown("### Diseña una política criminal basada en la teoría de la desorganización social")
+    
     if st.button("Comenzar"):
         st.session_state.fase = "barrio"
 
 # -----------------------------
-# BARRIO
+# SELECCIÓN DE BARRIO
 # -----------------------------
 if st.session_state.fase == "barrio":
 
     barrio = st.selectbox("Selecciona tu barrio", list(barrios.keys()))
-
-    if barrio:
-        st.subheader("📍 Contexto del barrio")
-        st.markdown(barrios[barrio]["descripcion"])
+    
+    st.write(barrios[barrio]["descripcion"])
 
     if st.button("Confirmar"):
         base = barrios[barrio]["datos"]
@@ -237,12 +129,10 @@ if st.session_state.fase == "juego":
     b = st.session_state.barrio
 
     st.subheader(f"📍 Ronda {st.session_state.ronda}/3")
+    st.write("Estado:", b)
 
-    st.write("📊 Estado del barrio:", b)
-
-    diagnostico = st.text_area("🔍 Diagnóstico del problema")
-
-    plan = st.text_area("🧠 Diseña tu intervención")
+    diagnostico = st.text_area("🔍 Diagnóstico del barrio")
+    plan = st.text_area("🧠 Plan de intervención")
 
     if st.button("Ejecutar plan"):
 
@@ -250,37 +140,11 @@ if st.session_state.fase == "juego":
             st.warning("Completa diagnóstico y plan")
             st.stop()
 
-        datos = interpretar_plan_ia(plan)
+        cambios, evaluacion, score = interpretar_plan(plan)
 
-        if datos is None:
-            st.error("Error interpretando el plan")
-            st.stop()
+        for k in cambios:
+            b[k] += cambios[k]
 
-        # aplicar efectos
-        b["policia"] += datos["policia"]
-        b["cohesion"] += datos["cohesion"]
-        b["control"] += datos["control_informal"]
-        b["desorganizacion"] += datos["desorganizacion"]
-        b["pobreza"] += datos["pobreza"]
-
-        # interacción barrios
-        if b["policia"] > 70:
-            st.warning("🚨 Desplazamiento del delito")
-            for ob in st.session_state.otros_barrios:
-                st.session_state.otros_barrios[ob]["delincuencia"] += 5
-
-        # evento
-        evento = random.choice(["crisis", "conflicto", "ninguno"])
-
-        if evento == "crisis":
-            st.warning("💥 Crisis económica")
-            b["pobreza"] += 10
-
-        if evento == "conflicto":
-            st.warning("⚠️ Conflicto vecinal")
-            b["cohesion"] -= 10
-
-        # delito
         b["delincuencia"] = (
             b["desorganizacion"] * 0.4 +
             b["pobreza"] * 0.3 -
@@ -289,8 +153,12 @@ if st.session_state.fase == "juego":
         )
 
         st.success(f"📉 Delincuencia: {round(b['delincuencia'],2)}")
-        st.write(datos["evaluacion"])
-        st.metric("Coherencia teórica", datos["coherencia_teorica"])
+
+        st.write("Evaluación:")
+        for e in evaluacion:
+            st.write("-", e)
+
+        st.metric("Puntuación teórica", score)
 
         st.session_state.historial.append({
             "plan": plan,
@@ -303,7 +171,7 @@ if st.session_state.fase == "juego":
             st.session_state.fase = "final"
 
 # -----------------------------
-# FINAL
+# FINAL + INFORMES
 # -----------------------------
 if st.session_state.fase == "final":
 
@@ -312,9 +180,38 @@ if st.session_state.fase == "final":
     informe = f"""
     Barrio: {st.session_state.barrio['nombre']}
     Delincuencia final: {round(st.session_state.barrio['delincuencia'],2)}
-    Historial: {st.session_state.historial}
+
+    Historial:
+    {json.dumps(st.session_state.historial, indent=2)}
     """
 
-    st.download_button("📥 Descargar informe", informe)
+    st.download_button("📥 Descargar tu informe", informe)
 
-    st.success("Simulación completada")
+    # -------------------------
+    # SUBIR INFORMES
+    # -------------------------
+    st.subheader("📤 Subir informe para evaluación")
+
+    nombre_grupo = st.text_input("Nombre del grupo")
+
+    if st.button("Subir informe"):
+        if nombre_grupo:
+            st.session_state.informes_subidos.append({
+                "grupo": nombre_grupo,
+                "contenido": informe
+            })
+            st.success("Informe subido correctamente")
+
+    # -------------------------
+    # VER Y DESCARGAR INFORMES
+    # -------------------------
+    st.subheader("📥 Informes de otros grupos")
+
+    for i, inf in enumerate(st.session_state.informes_subidos):
+        st.write(f"Grupo: {inf['grupo']}")
+        st.download_button(
+            label=f"Descargar informe {inf['grupo']}",
+            data=inf["contenido"],
+            file_name=f"informe_{inf['grupo']}.txt",
+            key=i
+        )
