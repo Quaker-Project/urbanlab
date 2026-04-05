@@ -70,7 +70,7 @@ if st.session_state.fase == "juego":
     
     presupuesto = 100
     
-    st.subheader("💰 Presupuesto:", presupuesto)
+    st.metric("💰 Presupuesto disponible", presupuesto)
     
     opciones = {
         "Policía intensiva": 30,
