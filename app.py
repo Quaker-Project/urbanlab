@@ -246,12 +246,14 @@ if "resultado" in st.session_state:
 st.divider()
 st.header("📄 Intercambio y evaluación")
 
-grupo = st.selectbox("Selecciona tu grupo", ["Grupo A","Grupo B","Grupo C"])
+grupo = st.selectbox("Selecciona tu grupo", ["Grupo A","Grupo B","Grupo C", "Grupo D", "Grupo E", " Grupo F", "Grupo G"])
 
 links = {
-    "Grupo A":{"upload":"LINK_A","review":"LINK_B"},
-    "Grupo B":{"upload":"LINK_B","review":"LINK_C"},
-    "Grupo C":{"upload":"LINK_C","review":"LINK_A"}
+    "Grupo A":{"upload":"https://drive.google.com/drive/folders/1milDBVgP5qossw_UXJbMhZLnwQ9vOy7t?usp=sharing","review":"https://drive.google.com/drive/folders/1lljOVHNvhmwbqopny9nE8fIjH-S6nVWx?usp=drive_link"},
+    "Grupo B":{"upload":"https://drive.google.com/drive/folders/1lljOVHNvhmwbqopny9nE8fIjH-S6nVWx?usp=drive_link","review":"https://drive.google.com/drive/folders/1Sw2Fj6dridgzOVh-9Q89ThJ6cvPc-tXw?usp=sharing"},
+    "Grupo C":{"upload":"https://drive.google.com/drive/folders/1Sw2Fj6dridgzOVh-9Q89ThJ6cvPc-tXw?usp=sharing","review":"https://drive.google.com/drive/folders/1milDBVgP5qossw_UXJbMhZLnwQ9vOy7t?usp=drive_link"},
+    "Grupo D":{"https://drive.google.com/drive/folders/1XHkysQiaxAevSWVrkgZaFvE8QPNUfMMl?usp=sharing","review":"https://drive.google.com/drive/folders/1bxb--QlXr4oqN0DkXE6_5bWywhY3AQt0?usp=sharing"}, 
+    "Grupo E": {"https://drive.google.com/drive/folders/1bxb--QlXr4oqN0DkXE6_5bWywhY3AQt0?usp=sharing", "review":"https://drive.google.com/drive/folders/1XHkysQiaxAevSWVrkgZaFvE8QPNUfMMl?usp=sharing"}, 
 }
 
 st.subheader("Subir informe")
