@@ -1,169 +1,213 @@
 import streamlit as st
 import random
+import json
+from openai import OpenAI
 
-st.set_page_config(page_title="Simulador Criminológico", layout="centered")
+# 🔑 API (pon tu clave en Streamlit secrets)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-st.title("🏙️ Laboratorio de Política Criminal Urbana")
+st.set_page_config(page_title="UrbanLab Criminología", layout="centered")
 
-# -------------------------
-# INICIO
-# -------------------------
+st.title("🏙️ UrbanLab: Simulación de Política Criminal")
+
+# -----------------------------
+# ESTADO INICIAL
+# -----------------------------
 if "fase" not in st.session_state:
     st.session_state.fase = "inicio"
 
+if "historial" not in st.session_state:
+    st.session_state.historial = []
+
+if "otros_barrios" not in st.session_state:
+    st.session_state.otros_barrios = {
+        "Barrio Norte": {"policia": 50, "delincuencia": 60},
+        "Barrio Sur": {"policia": 30, "delincuencia": 70}
+    }
+
+# -----------------------------
+# FUNCIÓN IA
+# -----------------------------
+def interpretar_plan_ia(plan_texto):
+    
+    prompt = f"""
+    Eres experto en criminología urbana.
+
+    Analiza este plan:
+    "{plan_texto}"
+
+    Devuelve SOLO JSON con:
+    policia (-10 a 10)
+    cohesion (-10 a 10)
+    control_informal (-10 a 10)
+    desorganizacion (-10 a 10)
+    pobreza (-10 a 10)
+    tipo_estrategia (punitiva, estructural, mixta)
+    coherencia_teorica (0-10)
+    evaluacion (breve feedback)
+    """
+    
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+    
+    return json.loads(response.choices[0].message.content)
+
+# -----------------------------
+# INICIO
+# -----------------------------
 if st.session_state.fase == "inicio":
     st.markdown("""
-    ## 🎯 Objetivo
+    ## 🎯 Misión
     
-    Diseñar un plan para reducir la delincuencia en un barrio.
+    Reduce la delincuencia SIN destruir la cohesión social.
     
-    ⚠️ Atención:
-    - Las decisiones tienen consecuencias
-    - No todo es policía
-    - El barrio es un sistema social
+    - Diseña políticas reales
+    - Justifica con teoría
+    - Observa consecuencias
     
-    👉 Pulsa para comenzar
     """)
-    
+
     if st.button("Comenzar"):
         st.session_state.fase = "barrio"
 
-# -------------------------
+# -----------------------------
 # BARRIOS
-# -------------------------
+# -----------------------------
 if st.session_state.fase == "barrio":
     
     barrios = {
-        "A - Alta movilidad": {"desorganizacion": 75, "cohesion": 30, "pobreza": 50},
-        "B - Pobreza estructural": {"desorganizacion": 65, "cohesion": 40, "pobreza": 80},
-        "C - Diversidad cultural": {"desorganizacion": 60, "cohesion": 35, "pobreza": 60},
-        "D - Degradación urbana": {"desorganizacion": 80, "cohesion": 25, "pobreza": 70}
+        "Movilidad alta": {"desorganizacion": 75, "cohesion": 30, "pobreza": 50},
+        "Pobreza estructural": {"desorganizacion": 65, "cohesion": 40, "pobreza": 80},
+        "Diversidad conflictiva": {"desorganizacion": 60, "cohesion": 35, "pobreza": 60}
     }
     
     barrio = st.selectbox("Selecciona tu barrio", list(barrios.keys()))
     
-    if st.button("Confirmar barrio"):
+    if st.button("Confirmar"):
         base = barrios[barrio]
         
         st.session_state.barrio = {
+            "nombre": barrio,
             "desorganizacion": base["desorganizacion"],
             "cohesion": base["cohesion"],
             "control": 30,
             "pobreza": base["pobreza"],
             "policia": 40,
-            "delincuencia": 50
+            "delincuencia": 60
         }
         
         st.session_state.ronda = 1
         st.session_state.fase = "juego"
 
-# -------------------------
+# -----------------------------
 # JUEGO
-# -------------------------
+# -----------------------------
 if st.session_state.fase == "juego":
     
     b = st.session_state.barrio
     
-    st.subheader(f"📍 Ronda {st.session_state.ronda}/4")
+    st.subheader(f"📍 Ronda {st.session_state.ronda}/3")
     
-    st.write("Estado actual:", b)
+    st.write(b)
     
-    presupuesto = 100
+    plan = st.text_area("🧠 Diseña tu plan")
     
-    st.metric("💰 Presupuesto disponible", presupuesto)
-    
-    opciones = {
-        "Policía intensiva": 30,
-        "Programas comunitarios": 25,
-        "Rehabilitación urbana": 40,
-        "Mediación cultural": 20
-    }
-    
-    seleccion = st.multiselect("Elige intervenciones", opciones.keys())
-    
-    coste = sum([opciones[o] for o in seleccion])
-    
-    st.write("Coste:", coste)
-    
-    if st.button("Ejecutar decisiones"):
+    if st.button("Ejecutar plan"):
         
-        if coste > presupuesto:
-            st.error("Presupuesto excedido")
-        else:
-            
-            # efectos
-            for s in seleccion:
-                if s == "Policía intensiva":
-                    b["policia"] += 10
-                    b["delincuencia"] -= 5
-                
-                if s == "Programas comunitarios":
-                    b["cohesion"] += 10
-                    b["control"] += 8
-                
-                if s == "Rehabilitación urbana":
-                    b["desorganizacion"] -= 10
-                    b["pobreza"] -= 5
-                
-                if s == "Mediación cultural":
-                    b["cohesion"] += 7
-            
-            # evento automático
-            evento = random.choice([
-                "Crisis económica",
-                "Aumento de movilidad",
-                "Conflicto vecinal",
-                "Ninguno"
-            ])
-            
-            st.warning(f"Evento: {evento}")
-            
-            if evento == "Crisis económica":
-                b["pobreza"] += 10
-            
-            if evento == "Aumento de movilidad":
-                b["desorganizacion"] += 10
-            
-            if evento == "Conflicto vecinal":
-                b["cohesion"] -= 10
-            
-            # cálculo delito
-            b["delincuencia"] = (
-                b["desorganizacion"] * 0.4 +
-                b["pobreza"] * 0.3 -
-                b["cohesion"] * 0.3 -
-                b["control"] * 0.2
-            )
-            
-            st.success(f"Nivel de delincuencia: {round(b['delincuencia'],2)}")
-            
-            st.session_state.ronda += 1
-            
-            if st.session_state.ronda > 4:
-                st.session_state.fase = "final"
+        try:
+            datos = interpretar_plan_ia(plan)
+        except:
+            st.error("Error con IA. Reformula tu plan.")
+            st.stop()
+        
+        # aplicar cambios
+        b["policia"] += datos["policia"]
+        b["cohesion"] += datos["cohesion"]
+        b["control"] += datos["control_informal"]
+        b["desorganizacion"] += datos["desorganizacion"]
+        b["pobreza"] += datos["pobreza"]
+        
+        # 🌍 INTERACCIÓN ENTRE BARRIOS (IA + reglas)
+        if b["policia"] > 70:
+            st.warning("🚨 Desplazamiento del delito a otros barrios")
+            for ob in st.session_state.otros_barrios:
+                st.session_state.otros_barrios[ob]["delincuencia"] += 5
+        
+        # evento aleatorio
+        evento = random.choice(["crisis", "conflicto", "ninguno"])
+        
+        if evento == "crisis":
+            st.warning("💥 Crisis económica")
+            b["pobreza"] += 10
+        
+        if evento == "conflicto":
+            st.warning("⚠️ Conflicto comunitario")
+            b["cohesion"] -= 10
+        
+        # cálculo delito
+        b["delincuencia"] = (
+            b["desorganizacion"] * 0.4 +
+            b["pobreza"] * 0.3 -
+            b["cohesion"] * 0.3 -
+            b["control"] * 0.2
+        )
+        
+        # guardar historial
+        st.session_state.historial.append({
+            "ronda": st.session_state.ronda,
+            "plan": plan,
+            "resultado": b["delincuencia"],
+            "tipo": datos["tipo_estrategia"],
+            "coherencia": datos["coherencia_teorica"]
+        })
+        
+        st.success(f"Delincuencia: {round(b['delincuencia'],2)}")
+        st.write("🧠 Evaluación IA:", datos["evaluacion"])
+        st.metric("Coherencia teórica", datos["coherencia_teorica"])
+        
+        st.session_state.ronda += 1
+        
+        if st.session_state.ronda > 3:
+            st.session_state.fase = "final"
 
-# -------------------------
-# FINAL
-# -------------------------
+# -----------------------------
+# INFORME FINAL
+# -----------------------------
 if st.session_state.fase == "final":
     
-    b = st.session_state.barrio
+    st.title("🏁 Informe final")
     
-    st.title("🏁 Resultados finales")
+    historial = st.session_state.historial
     
-    st.write("Delincuencia final:", round(b["delincuencia"],2))
+    delincuencia_final = st.session_state.barrio["delincuencia"]
     
-    if b["delincuencia"] < 30:
-        st.success("🎉 Estrategia estructural eficaz")
-    elif b["policia"] > 80:
-        st.warning("⚠️ Estrategia basada en control formal")
+    estrategias = [h["tipo"] for h in historial]
+    
+    informe = f"""
+    INFORME FINAL
+    
+    Barrio: {st.session_state.barrio['nombre']}
+    
+    Delincuencia final: {round(delincuencia_final,2)}
+    
+    Estrategias utilizadas: {estrategias}
+    
+    Historial:
+    {historial}
+    """
+    
+    st.download_button(
+        label="📥 Descargar informe",
+        data=informe,
+        file_name="informe_urbanlab.txt"
+    )
+    
+    if delincuencia_final < 30:
+        st.success("🎉 Excelente estrategia estructural")
+    elif "punitiva" in estrategias:
+        st.warning("⚠️ Dependencia del control formal")
     else:
-        st.info("📊 Resultados mixtos")
-    
-    st.markdown("""
-    ## 🧠 Reflexión
-    
-    - ¿Has mejorado la cohesión social?
-    - ¿Dependiste demasiado de la policía?
-    - ¿Atacaste causas estructurales?
-    """)
+        st.info("📊 Resultado mixto")
