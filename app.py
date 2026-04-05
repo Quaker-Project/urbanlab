@@ -29,7 +29,7 @@ if "barrios_disponibles" not in st.session_state:
         "Usera (Madrid)",
         "Ciutat Meridiana (Barcelona)",
         "La Mina (Sant Adrià del Besòs)",
-        "Palma Palmilla (Málaga)
+        "Palma Palmilla (Málaga)"
     ]
 
 # -----------------------------
