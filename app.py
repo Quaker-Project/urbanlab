@@ -249,7 +249,7 @@ if "resultado" in st.session_state:
 st.divider()
 st.header("📄 Intercambio y evaluación")
 
-grupo = st.selectbox("Selecciona tu grupo", ["Grupo A","Grupo B","Grupo C", "Grupo D", "Grupo E", " Grupo F", "Grupo G"])
+grupo = st.selectbox("Selecciona tu grupo", ["Grupo A","Grupo B","Grupo C", "Grupo D", "Grupo E", "Grupo F", "Grupo G"])
 
 links = {
     "Grupo A":{"upload":"https://drive.google.com/drive/folders/1milDBVgP5qossw_UXJbMhZLnwQ9vOy7t?usp=sharing","review":"https://drive.google.com/drive/folders/1lljOVHNvhmwbqopny9nE8fIjH-S6nVWx?usp=drive_link"},
